@@ -102,8 +102,6 @@ def generate_factor_map(path, data, col_conf, factor_config):
                 accident = 1
 
             sns      = data[j, col_conf.index('sns')]
-            if sns > 0:
-                sns = 1
 
             factor_map[loc['x'] ,loc['y'],factor_config['congestion_channel']]  = congestion
             factor_map[loc['x'] ,loc['y'],factor_config['rainfall_channel']]    = rainfall
