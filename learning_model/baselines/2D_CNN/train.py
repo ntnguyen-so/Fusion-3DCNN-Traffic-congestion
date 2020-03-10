@@ -3,13 +3,13 @@ import os, fnmatch
 import matplotlib.pyplot as plt
 from keras import *
 import sys
-sys.path.append('../')
+sys.path.append('../../..')
 from utils.logger import Logger
 
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = '/media/tnnguyen/7E3B52AF2CE273C0/Thesis/Final-Thesis-Output/raster_imgs/CRSA/dataset/medium'
+dataset_path = './dataset/medium'
 WD = {
     'input': {
         'factors'    : dataset_path + '/in_seq/',
@@ -25,17 +25,16 @@ FACTOR = {
     # factor channel index
     'Input_congestion'        : 0,
     'Input_rainfall'          : 1,
-    'Input_sns'               : 2,
-    'Input_accident'          : 3,
+    'Input_accident'          : 2,
     'default'                 : 0
 }
 
 MAX_FACTOR = {
-    'Input_congestion'        : 5000,
-    'Input_rainfall'          : 150,
+    'Input_congestion'        : 6405,
+    'Input_rainfall'          : 151,
     'Input_sns'               : 1,
     'Input_accident'          : 1,
-    'default'                 : 5000,
+    'default'                 : 6405,
 }
 
 BOUNDARY_AREA = {
@@ -53,18 +52,18 @@ PADDING = {
 GLOBAL_SIZE_X = [6, 60, 80, 4]
 GLOBAL_SIZE_Y = [3, 60, 80, 1]
 
-# Get the list of factors data files
+# Get the list of factors' data files
 print('Loading training data...')
 trainDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2014*30.npz')
 trainDataFiles.sort()
 numTrainDataFiles = len(trainDataFiles)
-print('Nunber of training data = {0}'.format(numTrainDataFiles))
+print('Number of training data = {0}'.format(numTrainDataFiles))
 
 print('Loading testing data...')
 testDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2015*30.npz')
 testDataFiles.sort()
 numTestDataFiles = len(testDataFiles)
-print('Nunber of testing data = {0}'.format(numTestDataFiles))
+print('Number of testing data = {0}'.format(numTestDataFiles))
 
 ###########################################
 ## Load data for training and evaluating ##
@@ -89,7 +88,7 @@ def appendFactorData(factorName, factorData, X):
     # Load data
     data = factorData[:, :, :, FACTOR[factorName]]
     data = np.expand_dims(data, axis=3)
-    data = np.expand_dims(data, axis=0)
+    data = np.swapaxes(data, 0, 3)
     
     if factorName == 'Input_accident' or factorName == 'Input_sns':
         data[data > 0] = 1
@@ -163,8 +162,8 @@ def buildCNN(cnnInputs, imgShape, filters, kernelSize, factorName, isFusion=Fals
         if i == 0:
             cnnOutput = cnnInput
 
-        cnnOutput = layers.Conv3D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='tanh',
-                                  name='Conv3D_{0}{1}'.format(factorName, counter))(cnnOutput)
+        cnnOutput = layers.Conv2D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='tanh',
+                                  name='Conv2D_{0}{1}'.format(factorName, counter))(cnnOutput)
         cnnOutput = layers.BatchNormalization(name='BN_{0}{1}'.format(factorName, counter))(cnnOutput)
     
     if cnnInputs is not None:
@@ -183,13 +182,11 @@ def buildPrediction(orgInputs, filters, kernelSize, lastOutputs=None):
             else:
                 predictionOutput = orgInputs
                     
-        predictionOutput = layers.Conv3D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='sigmoid', 
-                                         name='Conv3D_prediction{0}1'.format(counter))(predictionOutput)        
-        predictionOutput = layers.Conv3D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='relu', 
-                                         name='Conv3D_prediction{0}2'.format(counter))(predictionOutput)
+        predictionOutput = layers.Conv2D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='sigmoid', 
+                                         name='Conv2D_prediction{0}1'.format(counter))(predictionOutput)        
+        predictionOutput = layers.Conv2D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='relu', 
+                                         name='Conv2D_prediction{0}2'.format(counter))(predictionOutput)
         
-    predictionOutput = layers.MaxPooling3D(pool_size=(2,1,1), name='output')(predictionOutput)
-
     predictionOutput = Model(inputs=orgInputs, outputs=predictionOutput)
     return predictionOutput
 
@@ -220,9 +217,10 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
 ###############################
 ## Define model architecture ##
 ###############################
-imgShape = (6,60,80,1)
-filtersDict = {}; filtersDict['factors'] = [128, 128, 256, 256, 256, 256, 128]; filtersDict['prediction'] = [64, 1]
-kernelSizeDict = {}; kernelSizeDict['factors'] = (3,3,3); kernelSizeDict['factors_fusion'] = (3,3,3); kernelSizeDict['prediction'] = (3,3,3)
+imgShape = (60,80,6)
+targetImgShape=(60,80,3)
+filtersDict = {}; filtersDict['factors'] = [128, 128, 256, 256, 256, 256, 128]; filtersDict['prediction'] = [64, targetImgShape[2]]
+kernelSizeDict = {}; kernelSizeDict['factors'] = (3,3); kernelSizeDict['prediction'] = (3,3)
 
 predictionModel = buildCompleteModel(imgShape, filtersDict, kernelSizeDict)
 predictionModel.summary()
@@ -232,7 +230,7 @@ utils.plot_model(predictionModel,to_file='architecture.png',show_shapes=True)
 ## Configuring learning process ##
 ##################################
 batchSize = 1
-numIterations = numTrainDataFiles * len(BOUNDARY_AREA) * 1
+numIterations = numTrainDataFiles * len(BOUNDARY_AREA) * 2
 
 lr = 5e-5
 predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=1e-5),
@@ -251,7 +249,6 @@ testLosses = list()
 start = 1
 
 for iteration in range(start, numIterations):
-    
     # ============ Training progress ============#
     X, y = createBatch(batchSize, trainDataFiles)
     trainLoss = predictionModel.train_on_batch(X, y['default'])
@@ -279,8 +276,9 @@ for iteration in range(start, numIterations):
     trainLosses.append(trainLoss[0])
     testLosses.append(testLoss)    
     print(iteration, trainLoss[0], testLoss, np.sum(ytest['default']), np.sum(ypredicted))
+    
     # save model checkpoint
-    if iteration % 1 == 0:   
+    if iteration % 100 == 0:   
         # save model weight
         predictionModel.save_weights(WD['output']['model_weights'] \
-                                     + 'epoch_' + str(iteration) + '.h5')
+                                     + 'iteration_' + str(iteration) + '.h5')

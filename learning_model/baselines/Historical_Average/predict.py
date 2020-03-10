@@ -8,7 +8,7 @@ from utils.metrics import *
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = '/mnt/7E3B52AF2CE273C0/Thesis/Final-Thesis-Output/raster_imgs/CRSA/dataset/acm_short'
+dataset_path = './dataset/medium'
 WD = {
     'input': {
         'factors'    : dataset_path + '/in_seq/',
@@ -36,11 +36,11 @@ MAIN_FACTOR = {
 }
 
 MAX_FACTOR = {
-    'Input_congestion'        : 2736,
-    'Input_rainfall'          : 288,
+    'Input_congestion'        : 6405,
+    'Input_rainfall'          : 151,
     'Input_sns'               : 1,
     'Input_accident'          : 1,
-    'default'                 : 288,
+    'default'                 : 6405,
 }
 
 LINK_FACTOR = {

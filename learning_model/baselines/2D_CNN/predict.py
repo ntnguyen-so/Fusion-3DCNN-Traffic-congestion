@@ -9,7 +9,7 @@ from utils.metrics import *
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = '/media/tnnguyen/7E3B52AF2CE273C0/Thesis/Final-Thesis-Output/raster_imgs/CRSA/dataset/medium'
+dataset_path = './dataset/medium'
 WD = {
     'input': {
         'test' : {
@@ -31,11 +31,11 @@ FACTOR = {
 }
 
 MAX_FACTOR = {
-    'Input_congestion'        : 5000,
-    'Input_rainfall'          : 150,
+    'Input_congestion'        : 6405,
+    'Input_rainfall'          : 151,
     'Input_sns'               : 1,
     'Input_accident'          : 1,
-    'default'                 : 5000,
+    'default'                 : 6405,
 }
 
 BOUNDARY_AREA = {

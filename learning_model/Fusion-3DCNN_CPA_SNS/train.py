@@ -3,22 +3,22 @@ import os, fnmatch
 import matplotlib.pyplot as plt
 from keras import *
 import sys
-sys.path.append('../')
-from utils.metrics import *
+sys.path.append('../..')
+from utils.logger import Logger
 
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = '/mnt/7E3B52AF2CE273C0/Thesis/Final-Thesis-Output/raster_imgs/CRSA/dataset/acm_medium'
+dataset_path = './dataset/medium'
 WD = {
     'input': {
-        'test' : {
-          'factors'    : dataset_path + '/in_seq/',
-          'predicted'  : dataset_path + '/out_seq/'
-        },
-    'model_weights' : './training_output/ok_medium_weights_3Factors_075.h5'
+        'factors'    : dataset_path + '/in_seq/',
+        'predicted'  : dataset_path + '/out_seq/'    
     },    
-    'loss': './evaluation/ok_medium_3Factors_075.csv'
+    'output': {
+        'model_weights' : './training_output/model/',
+        'plots'         : './training_output/monitor/'
+    }
 }
 
 FACTOR = {
@@ -34,7 +34,6 @@ MAIN_FACTOR = {
     # factor channel index
     'Input_congestion'        : 0,
     'Input_rainfall'          : 1,
-    'Input_sns'               : 2,
     'Input_accident'          : 3
 }
 
@@ -69,8 +68,15 @@ GLOBAL_SIZE_Y = [3, 60, 80, 1]
 
 REDUCED_WEIGHT = 0.75
 
+# Get the list of factors data files
+print('Loading training data...')
+trainDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2014*30.npz')
+trainDataFiles.sort()
+numTrainDataFiles = len(trainDataFiles)
+print('Nunber of training data = {0}'.format(numTrainDataFiles))
+
 print('Loading testing data...')
-testDataFiles = fnmatch.filter(os.listdir(WD['input']['test']['factors']), '2015*30.npz')
+testDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2015*30.npz')
 testDataFiles.sort()
 numTestDataFiles = len(testDataFiles)
 print('Nunber of testing data = {0}'.format(numTestDataFiles))
@@ -104,7 +110,7 @@ def fuseFactors(factorName, factorData):
     if factorName == 'Input_accident':
         main_factor[main_factor > 0] = 1
 
-    if factorName != 'default' and factorName != 'Input_sns':
+    if factorName != 'default':
         secondary_factor = factorData[:, :, :, FACTOR['Input_sns']]
         secondary_factor = np.expand_dims(secondary_factor, axis=3)
         secondary_factor = np.expand_dims(secondary_factor, axis=0)        
@@ -125,7 +131,7 @@ def appendFactorData(factorName, factorData, X):
 
     return X
 
-def loadTestData(dataFiles, fileId, areaId):
+def createBatch(batchSize, dataFiles):
     # Initalize data
     X = {}
     for key in FACTOR.keys():
@@ -133,26 +139,42 @@ def loadTestData(dataFiles, fileId, areaId):
     
     y = {}
     y['default'] = None    
-
-    seqName = dataFiles[fileId]
     
-    factorData = loadDataFile(WD['input']['test']['factors'] + seqName, areaId, 'X')
-    predictedData = loadDataFile(WD['input']['test']['predicted'] + seqName, areaId, 'Y')    
+    numDataFiles = len(dataFiles)
+    i = 0
+    while i < batchSize:
+        fileId = np.random.randint(low=0, high=int(numDataFiles), size=1)
+        fileId = fileId[0]
 
-    # Load factors and predicted data
-    for key in FACTOR.keys():
-        X = appendFactorData(key, factorData, X)
-    
-    y = appendFactorData('default', predictedData, y)
+        areaId = np.random.randint(low=0, high=len(BOUNDARY_AREA), size=1)
+        areaId = areaId[0]
+
+        try:
+            seqName = dataFiles[fileId]
+            factorData = loadDataFile(WD['input']['factors'] + seqName, areaId, 'X')
+            predictedData = loadDataFile(WD['input']['predicted'] + seqName, areaId, 'Y')            
+                
+            if not (factorData is not None and predictedData is not None):
+                continue
+
+            # Load factors and predicted data
+            for key in MAIN_FACTOR.keys():
+                X = appendFactorData(key, factorData, X)
+            
+            y = appendFactorData('default', predictedData, y)
+
+        except Exception:
+            continue
+        
+        i += 1
 
     del X['default']
     return X, y
 
-def logging(mode, contentLine):
-    f = open(WD['loss'], mode)
-    f.write(contentLine)
-    f.close()
-
+# loss function: MSE
+def mean_squared_error_eval(y_true, y_pred):
+    return backend.eval(backend.mean(backend.square(y_pred - y_true)))
+    
 ##########################
 ## Build learning model ##
 ##########################
@@ -201,7 +223,7 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
     # Define architecture for learning individual factors
     filters = filtersDict['factors']
     kernelSize= kernelSizeDict['factors']
-    
+
     congestionCNNModel   = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='congestion')
     rainfallCNNModel     = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='rainfall')
     accidentCNNModel     = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='accident')
@@ -239,65 +261,63 @@ predictionModel = buildCompleteModel(imgShape, filtersDict, kernelSizeDict)
 predictionModel.summary()
 utils.plot_model(predictionModel,to_file='architecture.png',show_shapes=True)
 
-#################################
-## Load weights for prediction ##
-#################################
-predictionModel = buildCompleteModel(imgShape, filtersDict, kernelSizeDict)
-predictionModel.load_weights(WD['input']['model_weights'])
+##################################
+## Configuring learning process ##
+##################################
+batchSize = 1
+numIterations = numTrainDataFiles * len(BOUNDARY_AREA) * 2
 
-################
-## Evaluation ##
-################
-header = 'datetime,data_congestion,data_rainfall,data_accident,data_sns_congestion,data_sns_rainfall,data_sns_accident,ground_truth,predicted,err_MSE,err_MAE,err_RMSE'
-logging('w', header  + '\n')
+lr = 3.5e-5
+predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=1e-5),
+                        loss='mse',
+                        metrics=['mse']
+                       )
 
-start = 0 
-numSamples = numTestDataFiles
-for fileId in range(start, numSamples):
-    for areaId in range(len(BOUNDARY_AREA)):
-        Xtest, ytest = loadTestData(testDataFiles, fileId, areaId)
+##############
+## Training ##
+##############
+train_logger = Logger('./training_output/tensorboard/train')
+test_logger = Logger('./training_output/tensorboard/test')
+
+trainLosses = list()
+testLosses = list()
+start = 1
+
+for iteration in range(start, numIterations):    
+    # ============ Training progress ============#
+    X, y = createBatch(batchSize, trainDataFiles)
+    trainLoss = predictionModel.train_on_batch(X, y['default'])
+
+    # test per epoch
+    Xtest, ytest = createBatch(1, testDataFiles)      
+    testLoss = predictionModel.test_on_batch(Xtest, ytest['default'])
+
+    # ============ TensorBoard logging ============#
+    # Log the scalar values
+    train_info = {
+        'loss': trainLoss[0],
+    }
+    test_info = {
+        'loss': testLoss[0],
+    }
+
+    for tag, value in train_info.items():
+        train_logger.scalar_summary(tag, value, step=iteration)
+    for tag, value in test_info.items():
+        test_logger.scalar_summary(tag, value, step=iteration)
+    
+    trainLosses.append(trainLoss[0])
+    testLosses.append(testLoss[0])    
+    print('Iteration: {:7d}; \tTrain_Loss: {:2.10f}; \tTest_Loss: {:2.10f}'.format(iteration, trainLoss[0], testLoss[0]))
+
+    if iteration % 200 == 0:
         ypredicted = predictionModel.predict(Xtest)
+        print('Iteration: {:7d}; \tTrain_Loss: {:2.10f}; \tTest_Loss: {:2.10f}; \tSum_GT: {:2.10f}; \tSum_PD: {:2.10f}'.format(
+            iteration, trainLoss[0], testLoss[0], np.sum(ytest['default']), np.sum(ypredicted)))
 
-        datetime = testDataFiles[fileId].split('.')[0] + '_' + str(areaId+1)
+    # save model checkpoint
+    if iteration % 3000 == 0:   
+        # save model weight
+        predictionModel.save_weights(WD['output']['model_weights'] \
+                                     + 'epoch_' + str(iteration) + '.h5')
 
-        data_congestion     = np.sum(Xtest['Input_congestion'] * MAX_FACTOR['Input_congestion'])
-        data_rainfall       = np.sum(Xtest['Input_rainfall']   * MAX_FACTOR['Input_rainfall'])
-        data_accident       = np.sum(Xtest['Input_accident']   * MAX_FACTOR['Input_accident'])    
-        data_sns            = np.sum(Xtest['Input_sns']        * MAX_FACTOR['Input_sns'])    
-        
-        data_sns = data_sns.astype(int)
-        data_sns_congestion = np.zeros_like(data_sns)
-        data_sns_rainfall = np.zeros_like(data_sns)
-        data_sns_accident = np.zeros_like(data_sns)
-        for msg_type in LINK_FACTOR['Input_congestion']:
-            data_sns_congestion[data_sns == msg_type] = 1
-        for msg_type in LINK_FACTOR['Input_rainfall']:
-            data_sns_rainfall[data_sns == msg_type] = 1
-        for msg_type in LINK_FACTOR['Input_accident']:
-            data_sns_accident[data_sns == msg_type] = 1
-        data_sns_congestion = np.sum(data_sns_congestion)
-        data_sns_rainfall = np.sum(data_sns_rainfall)
-        data_sns_accident = np.sum(data_sns_accident)
-
-        
-        gt_congestion       = ytest['default']      * MAX_FACTOR['Input_congestion']
-        pd_congestion       = ypredicted            * MAX_FACTOR['Input_congestion']
-        gt_congestion       = np.reshape(gt_congestion, (1, -1))
-        pd_congestion       = np.reshape(pd_congestion, (1, -1))
-
-        error_MSE           = mse(gt_congestion, pd_congestion)
-        error_MAE           = mae(gt_congestion, pd_congestion)
-        error_RMSE          = rmse(gt_congestion, pd_congestion)
-        
-        results = '{0},{1},{2},{3},\
-                {4},{5},{6},\
-                {7},{8},\
-                {9},{10},{11}'.format(
-                    datetime, data_congestion, data_rainfall, data_accident, 
-                    data_sns_congestion, data_sns_rainfall, data_sns_accident,
-                    np.sum(gt_congestion), np.sum(pd_congestion),
-                    error_MSE, error_MAE, error_RMSE
-                )
-
-        print(results)
-        logging('a', results + '\n')

@@ -3,22 +3,22 @@ import os, fnmatch
 import matplotlib.pyplot as plt
 from keras import *
 import sys
-sys.path.append('../')
+sys.path.append('../..')
 from utils.metrics import *
 
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = '/media/tnnguyen/7E3B52AF2CE273C0/Thesis/Final-Thesis-Output/raster_imgs/CRSA/dataset/medium'
+dataset_path = './dataset/medium'
 WD = {
     'input': {
         'test' : {
           'factors'    : dataset_path + '/in_seq/',
           'predicted'  : dataset_path + '/out_seq/'
         },
-    'model_weights' : './training_output/weights_medium.h5'
+    'model_weights' : './weights.h5'
     },    
-    'loss': './evaluation/medium.csv'
+    'loss': './evaluation/medium_CPA.csv'
 }
 
 FACTOR = {
@@ -31,19 +31,20 @@ FACTOR = {
 }
 
 MAX_FACTOR = {
-    'Input_congestion'        : 5000,
-    'Input_rainfall'          : 150,
+    'Input_congestion'        : 6405,
+    'Input_rainfall'          : 151,
     'Input_sns'               : 1,
     'Input_accident'          : 1,
-    'default'                 : 5000,
+    'default'                 : 6405,
 }
+
 
 BOUNDARY_AREA = {
     0 : [ 20, 80,   50,  100],
     1 : [ 40, 100,  100, 180],
     2 : [ 20, 80,   180, 250]
 }
-#imgShape = (6,60,80,1)
+
 PADDING = {
     0 : [ 0,  60, 30, 80],
     1 : [ 0,  60,  0, 80],
@@ -174,22 +175,29 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
     filters = filtersDict['factors']
     kernelSize= kernelSizeDict['factors']
 
-    filtersCongestion = list()
-    for filter in range(len(filters)-1):
-        filtersCongestion.append(int(filters[filter]*1.0))
-    filtersCongestion.append(filters[-1])
-    
-    print(filtersCongestion)
-    congestionCNNModel   = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filtersCongestion, kernelSize=kernelSize, factorName='congestion')
+    congestionCNNModel   = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='congestion')
+    rainfallCNNModel     = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='rainfall')
+    accidentCNNModel     = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='accident')
+
+    # Define architecture for fused layers
+    filters = filtersDict['factors_fusion']
+    kernelSize= kernelSizeDict['factors_fusion']
+
+    fusedCNNModel       = buildCNN(cnnInputs=[congestionCNNModel.input, rainfallCNNModel.input, accidentCNNModel.input],
+                                   cnnOutputs=[congestionCNNModel.output, rainfallCNNModel.output, accidentCNNModel.output],
+                                   imgShape=imgShape,
+                                   filters=filters, kernelSize=kernelSize,
+                                   factorName='factors', isFusion=True
+                                  )
 
     # Define architecture for prediction layer
     filters = filtersDict['prediction']
     kernelSize= kernelSizeDict['prediction']
-    predictionModel     = buildPrediction(orgInputs=[congestionCNNModel.input],
+    predictionModel     = buildPrediction(orgInputs=[congestionCNNModel.input, rainfallCNNModel.input, accidentCNNModel.input],
                                           filters=filters,
                                           kernelSize=kernelSize,
-                                          lastOutputs=congestionCNNModel.output
-                                         )            
+                                          lastOutputs=fusedCNNModel.output
+                                         )        
 
     return predictionModel
 
@@ -197,7 +205,7 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
 ## Define model architecture ##
 ###############################
 imgShape = (6,60,80,1)
-filtersDict = {}; filtersDict['factors'] = [128, 128, 256, 256, 256, 256, 128]; filtersDict['prediction'] = [64, 1]
+filtersDict = {}; filtersDict['factors'] = [128, 128, 256]; filtersDict['factors_fusion'] = [256, 256, 256, 128]; filtersDict['prediction'] = [64, 1]
 kernelSizeDict = {}; kernelSizeDict['factors'] = (3,3,3); kernelSizeDict['factors_fusion'] = (3,3,3); kernelSizeDict['prediction'] = (3,3,3)
 
 predictionModel = buildCompleteModel(imgShape, filtersDict, kernelSizeDict)
@@ -223,7 +231,7 @@ for fileId in range(start, numSamples):
         Xtest, ytest = loadTestData(testDataFiles, fileId, areaId)
         ypredicted = predictionModel.predict(Xtest)
 
-        datetime = testDataFiles[fileId].split('.')[0] + '_' + str(areaId+1)
+        datetime = testDataFiles[fileId].split('.')[0] + '_' + str(areaId+1)        
 
         data_congestion     = np.sum(Xtest['Input_congestion'] * MAX_FACTOR['Input_congestion'])
         data_rainfall       = np.sum(Xtest['Input_rainfall']   * MAX_FACTOR['Input_rainfall'])

@@ -3,13 +3,13 @@ import os, fnmatch
 import matplotlib.pyplot as plt
 from keras import *
 import sys
-sys.path.append('../')
+sys.path.append('../..')
 from utils.logger import Logger
 
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = '/media/tnnguyen/7E3B52AF2CE273C0/Thesis/Final-Thesis-Output/raster_imgs/CRSA/dataset/medium'
+dataset_path = './dataset/medium'
 WD = {
     'input': {
         'factors'    : dataset_path + '/in_seq/',
@@ -25,15 +25,17 @@ FACTOR = {
     # factor channel index
     'Input_congestion'        : 0,
     'Input_rainfall'          : 1,
-    'Input_accident'          : 2,
+    'Input_sns'               : 2,
+    'Input_accident'          : 3,
     'default'                 : 0
 }
 
 MAX_FACTOR = {
-    'Input_congestion'        : 5000,
-    'Input_rainfall'          : 150,
+    'Input_congestion'        : 6405,
+    'Input_rainfall'          : 151,
+    'Input_sns'               : 1,
     'Input_accident'          : 1,
-    'default'                 : 5000,
+    'default'                 : 6405,
 }
 
 BOUNDARY_AREA = {
@@ -51,18 +53,18 @@ PADDING = {
 GLOBAL_SIZE_X = [6, 60, 80, 4]
 GLOBAL_SIZE_Y = [3, 60, 80, 1]
 
-# Get the list of factors' data files
+# Get the list of factors data files
 print('Loading training data...')
 trainDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2014*30.npz')
 trainDataFiles.sort()
 numTrainDataFiles = len(trainDataFiles)
-print('Number of training data = {0}'.format(numTrainDataFiles))
+print('Nunber of training data = {0}'.format(numTrainDataFiles))
 
 print('Loading testing data...')
 testDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2015*30.npz')
 testDataFiles.sort()
 numTestDataFiles = len(testDataFiles)
-print('Number of testing data = {0}'.format(numTestDataFiles))
+print('Nunber of testing data = {0}'.format(numTestDataFiles))
 
 ###########################################
 ## Load data for training and evaluating ##
@@ -87,7 +89,7 @@ def appendFactorData(factorName, factorData, X):
     # Load data
     data = factorData[:, :, :, FACTOR[factorName]]
     data = np.expand_dims(data, axis=3)
-    data = np.swapaxes(data, 0, 3)
+    data = np.expand_dims(data, axis=0)
     
     if factorName == 'Input_accident' or factorName == 'Input_sns':
         data[data > 0] = 1
@@ -161,8 +163,8 @@ def buildCNN(cnnInputs, imgShape, filters, kernelSize, factorName, isFusion=Fals
         if i == 0:
             cnnOutput = cnnInput
 
-        cnnOutput = layers.Conv2D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='tanh',
-                                  name='Conv2D_{0}{1}'.format(factorName, counter))(cnnOutput)
+        cnnOutput = layers.Conv3D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='tanh',
+                                  name='Conv3D_{0}{1}'.format(factorName, counter))(cnnOutput)
         cnnOutput = layers.BatchNormalization(name='BN_{0}{1}'.format(factorName, counter))(cnnOutput)
     
     if cnnInputs is not None:
@@ -181,11 +183,13 @@ def buildPrediction(orgInputs, filters, kernelSize, lastOutputs=None):
             else:
                 predictionOutput = orgInputs
                     
-        predictionOutput = layers.Conv2D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='sigmoid', 
-                                         name='Conv2D_prediction{0}1'.format(counter))(predictionOutput)        
-        predictionOutput = layers.Conv2D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='relu', 
-                                         name='Conv2D_prediction{0}2'.format(counter))(predictionOutput)
+        predictionOutput = layers.Conv3D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='sigmoid', 
+                                         name='Conv3D_prediction{0}1'.format(counter))(predictionOutput)        
+        predictionOutput = layers.Conv3D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='relu', 
+                                         name='Conv3D_prediction{0}2'.format(counter))(predictionOutput)
         
+    predictionOutput = layers.MaxPooling3D(pool_size=(2,1,1), name='output')(predictionOutput)
+
     predictionOutput = Model(inputs=orgInputs, outputs=predictionOutput)
     return predictionOutput
 
@@ -194,21 +198,28 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
     filters = filtersDict['factors']
     kernelSize= kernelSizeDict['factors']
 
-    filtersCongestion = list()
-    for filter in range(len(filters)-1):
-        filtersCongestion.append(int(filters[filter]*1.0))
-    filtersCongestion.append(filters[-1])
-    
-    print(filtersCongestion)
-    congestionCNNModel   = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filtersCongestion, kernelSize=kernelSize, factorName='congestion')
+    congestionCNNModel   = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='congestion')
+    rainfallCNNModel     = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='rainfall')
+    accidentCNNModel     = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='accident')
+
+    # Define architecture for fused layers
+    filters = filtersDict['factors_fusion']
+    kernelSize= kernelSizeDict['factors_fusion']
+
+    fusedCNNModel       = buildCNN(cnnInputs=[congestionCNNModel.input, rainfallCNNModel.input, accidentCNNModel.input],
+                                   cnnOutputs=[congestionCNNModel.output, rainfallCNNModel.output, accidentCNNModel.output],
+                                   imgShape=imgShape,
+                                   filters=filters, kernelSize=kernelSize,
+                                   factorName='factors', isFusion=True
+                                  )
 
     # Define architecture for prediction layer
     filters = filtersDict['prediction']
     kernelSize= kernelSizeDict['prediction']
-    predictionModel     = buildPrediction(orgInputs=[congestionCNNModel.input],
+    predictionModel     = buildPrediction(orgInputs=[congestionCNNModel.input, rainfallCNNModel.input, accidentCNNModel.input],
                                           filters=filters,
                                           kernelSize=kernelSize,
-                                          lastOutputs=congestionCNNModel.output
+                                          lastOutputs=fusedCNNModel.output
                                          )            
 
     return predictionModel
@@ -216,10 +227,9 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
 ###############################
 ## Define model architecture ##
 ###############################
-imgShape = (60,80,6)
-targetImgShape=(60,80,3)
-filtersDict = {}; filtersDict['factors'] = [128, 128, 256, 256, 256, 256, 128]; filtersDict['prediction'] = [64, targetImgShape[2]]
-kernelSizeDict = {}; kernelSizeDict['factors'] = (3,3); kernelSizeDict['prediction'] = (3,3)
+imgShape = (6,60,80,1)
+filtersDict = {}; filtersDict['factors'] = [128, 128, 256]; filtersDict['factors_fusion'] = [256, 256, 256, 128]; filtersDict['prediction'] = [64, 1]
+kernelSizeDict = {}; kernelSizeDict['factors'] = (3,3,3); kernelSizeDict['factors_fusion'] = (3,3,3); kernelSizeDict['prediction'] = (3,3,3)
 
 predictionModel = buildCompleteModel(imgShape, filtersDict, kernelSizeDict)
 predictionModel.summary()
@@ -229,7 +239,7 @@ utils.plot_model(predictionModel,to_file='architecture.png',show_shapes=True)
 ## Configuring learning process ##
 ##################################
 batchSize = 1
-numIterations = numTrainDataFiles * len(BOUNDARY_AREA) * 1
+numIterations = numTrainDataFiles * len(BOUNDARY_AREA) * 2
 
 lr = 5e-5
 predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=1e-5),
@@ -247,16 +257,14 @@ trainLosses = list()
 testLosses = list()
 start = 1
 
-for iteration in range(start, numIterations):
+for iteration in range(start, numIterations):    
     # ============ Training progress ============#
     X, y = createBatch(batchSize, trainDataFiles)
     trainLoss = predictionModel.train_on_batch(X, y['default'])
 
     # test per epoch
     Xtest, ytest = createBatch(1, testDataFiles)      
-    ypredicted = predictionModel.predict(Xtest)
-    
-    testLoss = mean_squared_error_eval(ytest['default'], ypredicted)
+    testLoss = predictionModel.test_on_batch(Xtest, ytest['default'])
 
     # ============ TensorBoard logging ============#
     # Log the scalar values
@@ -264,7 +272,7 @@ for iteration in range(start, numIterations):
         'loss': trainLoss[0],
     }
     test_info = {
-        'loss': testLoss,
+        'loss': testLoss[0],
     }
 
     for tag, value in train_info.items():
@@ -273,11 +281,17 @@ for iteration in range(start, numIterations):
         test_logger.scalar_summary(tag, value, step=iteration)
     
     trainLosses.append(trainLoss[0])
-    testLosses.append(testLoss)    
-    print(iteration, trainLoss[0], testLoss, np.sum(ytest['default']), np.sum(ypredicted))
-    
+    testLosses.append(testLoss[0])    
+    print('Iteration: {:7d}; \tTrain_Loss: {:2.10f}; \tTest_Loss: {:2.10f}'.format(iteration, trainLoss[0], testLoss[0]))
+
+    if iteration % 200 == 0:
+        ypredicted = predictionModel.predict(Xtest)
+        print('Iteration: {:7d}; \tTrain_Loss: {:2.10f}; \tTest_Loss: {:2.10f}; \tSum_GT: {:2.10f}; \tSum_PD: {:2.10f}'.format(
+            iteration, trainLoss[0], testLoss[0], np.sum(ytest['default']), np.sum(ypredicted)))
+
     # save model checkpoint
-    if iteration % 100 == 0:   
+    if iteration % 3000 == 0:   
         # save model weight
         predictionModel.save_weights(WD['output']['model_weights'] \
-                                     + 'iteration_' + str(iteration) + '.h5')
+                                     + 'epoch_' + str(iteration) + '.h5')
+

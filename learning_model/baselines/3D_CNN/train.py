@@ -3,13 +3,13 @@ import os, fnmatch
 import matplotlib.pyplot as plt
 from keras import *
 import sys
-sys.path.append('../')
+sys.path.append('../../..')
 from utils.logger import Logger
 
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = '/mnt/7E3B52AF2CE273C0/Thesis/Final-Thesis-Output/raster_imgs/CRSA/dataset/acm_medium'
+dataset_path = './dataset/medium'
 WD = {
     'input': {
         'factors'    : dataset_path + '/in_seq/',
@@ -26,15 +26,8 @@ FACTOR = {
     'Input_congestion'        : 0,
     'Input_rainfall'          : 1,
     'Input_sns'               : 2,
-    'Input_accident'          : 3,   
+    'Input_accident'          : 3,
     'default'                 : 0
-}
-
-MAIN_FACTOR = {
-    # factor channel index
-    'Input_congestion'        : 0,
-    'Input_rainfall'          : 1,
-    'Input_accident'          : 3
 }
 
 MAX_FACTOR = {
@@ -43,12 +36,6 @@ MAX_FACTOR = {
     'Input_sns'               : 1,
     'Input_accident'          : 1,
     'default'                 : 6405,
-}
-
-LINK_FACTOR = {
-    'Input_congestion'      : (4,5,6,7),
-    'Input_rainfall'        : (2,3,6,7),
-    'Input_accident'        : (1,3,5,7)
 }
 
 BOUNDARY_AREA = {
@@ -65,8 +52,6 @@ PADDING = {
 
 GLOBAL_SIZE_X = [6, 60, 80, 4]
 GLOBAL_SIZE_Y = [3, 60, 80, 1]
-
-REDUCED_WEIGHT = 0.75
 
 # Get the list of factors data files
 print('Loading training data...')
@@ -97,32 +82,21 @@ def loadDataFile(path, areaId, mode):
         mask = np.zeros(GLOBAL_SIZE_Y)
     data = data[:, BOUNDARY_AREA[areaId][0]:BOUNDARY_AREA[areaId][1], BOUNDARY_AREA[areaId][2]:BOUNDARY_AREA[areaId][3], :]
     mask[:, PADDING[areaId][0]:PADDING[areaId][1], PADDING[areaId][2]:PADDING[areaId][3], :] = data
-    
+
     return mask
-    
-def fuseFactors(factorName, factorData):
-    main_factor = factorData[:, :, :, FACTOR[factorName]]
-    main_factor = np.expand_dims(main_factor, axis=3)
-    main_factor = np.expand_dims(main_factor, axis=0)
-    main_factor = main_factor.astype(float)
-    main_factor /= MAX_FACTOR[factorName]
-
-    if factorName == 'Input_accident':
-        main_factor[main_factor > 0] = 1
-
-    if factorName != 'default':
-        secondary_factor = factorData[:, :, :, FACTOR['Input_sns']]
-        secondary_factor = np.expand_dims(secondary_factor, axis=3)
-        secondary_factor = np.expand_dims(secondary_factor, axis=0)        
-        secondary_factor = secondary_factor.astype(int)
-
-        for idx in LINK_FACTOR[factorName]:
-            main_factor[secondary_factor == idx] = (1-REDUCED_WEIGHT) * main_factor[secondary_factor == idx]
-    
-    return main_factor
 
 def appendFactorData(factorName, factorData, X):
-    data = fuseFactors(factorName, factorData)
+    # Load data
+    data = factorData[:, :, :, FACTOR[factorName]]
+    data = np.expand_dims(data, axis=3)
+    data = np.expand_dims(data, axis=0)
+    
+    if factorName == 'Input_accident' or factorName == 'Input_sns':
+        data[data > 0] = 1
+    
+    # Standardize data
+    data = data.astype(float)
+    data /= MAX_FACTOR[factorName]
 
     if X[factorName] is None:
         X[factorName] = data
@@ -158,7 +132,7 @@ def createBatch(batchSize, dataFiles):
                 continue
 
             # Load factors and predicted data
-            for key in MAIN_FACTOR.keys():
+            for key in FACTOR.keys():
                 X = appendFactorData(key, factorData, X)
             
             y = appendFactorData('default', predictedData, y)
@@ -224,28 +198,21 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
     filters = filtersDict['factors']
     kernelSize= kernelSizeDict['factors']
 
-    congestionCNNModel   = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='congestion')
-    rainfallCNNModel     = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='rainfall')
-    accidentCNNModel     = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filters, kernelSize=kernelSize, factorName='accident')
-
-    # Define architecture for fused layers
-    filters = filtersDict['factors_fusion']
-    kernelSize= kernelSizeDict['factors_fusion']
-
-    fusedCNNModel       = buildCNN(cnnInputs=[congestionCNNModel.input, rainfallCNNModel.input, accidentCNNModel.input],
-                                   cnnOutputs=[congestionCNNModel.output, rainfallCNNModel.output, accidentCNNModel.output],
-                                   imgShape=imgShape,
-                                   filters=filters, kernelSize=kernelSize,
-                                   factorName='factors', isFusion=True
-                                  )
+    filtersCongestion = list()
+    for filter in range(len(filters)-1):
+        filtersCongestion.append(int(filters[filter]*1.0))
+    filtersCongestion.append(filters[-1])
+    
+    print(filtersCongestion)
+    congestionCNNModel   = buildCNN(cnnInputs=None, imgShape=imgShape, filters=filtersCongestion, kernelSize=kernelSize, factorName='congestion')
 
     # Define architecture for prediction layer
     filters = filtersDict['prediction']
     kernelSize= kernelSizeDict['prediction']
-    predictionModel     = buildPrediction(orgInputs=[congestionCNNModel.input, rainfallCNNModel.input, accidentCNNModel.input],
+    predictionModel     = buildPrediction(orgInputs=[congestionCNNModel.input],
                                           filters=filters,
                                           kernelSize=kernelSize,
-                                          lastOutputs=fusedCNNModel.output
+                                          lastOutputs=congestionCNNModel.output
                                          )            
 
     return predictionModel
@@ -254,7 +221,7 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
 ## Define model architecture ##
 ###############################
 imgShape = (6,60,80,1)
-filtersDict = {}; filtersDict['factors'] = [128, 128, 256]; filtersDict['factors_fusion'] = [256, 256, 256, 128]; filtersDict['prediction'] = [64, 1]
+filtersDict = {}; filtersDict['factors'] = [128, 128, 256, 256, 256, 256, 128]; filtersDict['prediction'] = [64, 1]
 kernelSizeDict = {}; kernelSizeDict['factors'] = (3,3,3); kernelSizeDict['factors_fusion'] = (3,3,3); kernelSizeDict['prediction'] = (3,3,3)
 
 predictionModel = buildCompleteModel(imgShape, filtersDict, kernelSizeDict)
@@ -265,14 +232,14 @@ utils.plot_model(predictionModel,to_file='architecture.png',show_shapes=True)
 ## Configuring learning process ##
 ##################################
 batchSize = 1
-numIterations = 9001# numTrainDataFiles * len(BOUNDARY_AREA) * 1
+numIterations = numTrainDataFiles * len(BOUNDARY_AREA) * 2
 
 lr = 5e-5
-predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=2e-5),
+predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=1e-5),
                         loss='mse',
                         metrics=['mse']
                        )
-#predictionModel.load_weights('./training_output/short_weights_3Factors_050.h5')
+
 ##############
 ## Training ##
 ##############
@@ -284,16 +251,13 @@ testLosses = list()
 start = 1
 
 for iteration in range(start, numIterations):
-    
     # ============ Training progress ============#
     X, y = createBatch(batchSize, trainDataFiles)
     trainLoss = predictionModel.train_on_batch(X, y['default'])
 
     # test per epoch
     Xtest, ytest = createBatch(1, testDataFiles)      
-    ypredicted = predictionModel.predict(Xtest)
-    
-    testLoss = mean_squared_error_eval(ytest['default'], ypredicted)
+    testLoss = predictionModel.test_on_batch(Xtest, ytest['default'])
 
     # ============ TensorBoard logging ============#
     # Log the scalar values
@@ -301,7 +265,7 @@ for iteration in range(start, numIterations):
         'loss': trainLoss[0],
     }
     test_info = {
-        'loss': testLoss,
+        'loss': testLoss[0],
     }
 
     for tag, value in train_info.items():
@@ -310,11 +274,16 @@ for iteration in range(start, numIterations):
         test_logger.scalar_summary(tag, value, step=iteration)
     
     trainLosses.append(trainLoss[0])
-    testLosses.append(testLoss)    
-    print(iteration, trainLoss[0], testLoss, np.sum(ytest['default']), np.sum(ypredicted))
+    testLosses.append(testLoss[0])    
+    print('Iteration: {:7d}; \tTrain_Loss: {:2.10f}; \tTest_Loss: {:2.10f}'.format(iteration, trainLoss[0], testLoss[0]))
+
+    if iteration % 200 == 0:
+        ypredicted = predictionModel.predict(Xtest)
+        print('Iteration: {:7d}; \tTrain_Loss: {:2.10f}; \tTest_Loss: {:2.10f}; \tSum_GT: {:2.10f}; \tSum_PD: {:2.10f}'.format(
+            iteration, trainLoss[0], testLoss[0], np.sum(ytest['default']), np.sum(ypredicted)))
+
     # save model checkpoint
-    if iteration % 100 == 0:   
+    if iteration % 3000 == 0:   
         # save model weight
         predictionModel.save_weights(WD['output']['model_weights'] \
                                      + 'epoch_' + str(iteration) + '.h5')
-
