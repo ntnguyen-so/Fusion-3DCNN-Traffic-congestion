@@ -6,8 +6,11 @@
 ### Architecture of Fusion-3DCNN ###
 ![Fusion-3DCNN](imgs/architecture.png?raw=true)
 
-### Sample predictions of Fusion-3DCNN for short- and long-term datasets respectively ###
+### Sample predictions of Fusion-3DCNN ###
+* Fusion-3DCNN which uses (1) traffic congestion, (2) precipitation, (3) vehicle collisions, and (4) Tweets (SNS data) about the first 3 factors for short-term dataset (looking back urban sensing data for 3 hours to predict traffic congestion for 1.5 hours)
 ![short](imgs/sample_short_predicted.png?raw=true)
+
+* Fusion-3DCNN which uses (1) traffic congestion, (2) precipitation, (3) vehicle collisions, and (4) Tweets (SNS data) about the first 3 factors for long-term dataset (looking back urban sensing data for 1 day to predict traffic congestion for 1 day)
 ![long](imgs/sample_long_predicted.png?raw=true)
 
 ### Repository structure ###
