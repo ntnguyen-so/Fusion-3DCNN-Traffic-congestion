@@ -1,7 +1,7 @@
 # The github repository storing source code presented in "Fusing Multi-source Urban Sensing Data for Raster-Image-based 3D-CNN in Traffic Congestion Prediction" paper.
 
 ### Complete workflow###
-![Complete workflow](https://drive.google.com/file/d/1yts3VKSlLwmeRcrhm003GUz7wQzvHLQX/view?usp=sharing)
+![Complete workflow](imgs/workflow.png?raw=true)
 
 ### Repository structure ###
 * timeseries2raster: the algorithm to convert sensing data stored in time-series format to 2D Multi-layer Raster-Images.
