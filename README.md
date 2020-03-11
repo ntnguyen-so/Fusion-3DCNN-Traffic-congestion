@@ -1,4 +1,4 @@
-# The github repository storing source code presented in "Fusing Multi-source Urban Sensing Data for Raster-Image-based 3D-CNN in Traffic Congestion Prediction" paper.
+# The github repository storing source code of Fusion-3DCNN to predict traffic congestion by using multiple urban spatio-temporal sensing data sources.
 
 ### Complete workflow ###
 ![Complete workflow](_imgs/workflow.png?raw=true)
