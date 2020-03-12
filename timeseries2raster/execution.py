@@ -93,7 +93,7 @@ def generate_factor_map(path, data, col_conf, factor_config):
                 continue
             
             # assign sensing data to corresponding location on raster image
-            congestion = data[j, col_conf.index('congestion')] * data[j, col_conf.index('numsegments')]
+            congestion = data[j, col_conf.index('congestion')] 
             rainfall = data[j, col_conf.index('rainfall')]
             accident = data[j, col_conf.index('accident')]  
             if isinstance(accident, str) == True:
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     # ============================================ #
     # Needed columns for extraction
     col_name = ['datetime', 'meshcode', 'rainfall', 'numsegments', 'congestion', 'accident', 'sns', 'center']    
-    col_idx  = [1         , 2         , 5         , 6            , 10           , 15        , 13,    17   ]
+    col_idx  = [1         , 2         , 5         , 6            , 9           , 15        , 13,    17   ]
     target_col = len(col_name) - 1
 
     # ============================================ #
