@@ -75,7 +75,7 @@ def generate_factor_map(path, data, col_conf, factor_config):
             # get center coordination of each mesh
             meshcode = data[j, col_conf.index('meshcode')]
             mesh = parse_mesh_code(str(meshcode))
-            mesh_center = mesh.south_west + (mesh.size / 2.0)
+            mesh_center = mesh.south_west + (mesh.size / 8.0)
             latitude = mesh_center.lat.degree
             longitude = mesh_center.lon.degree
 
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     # ============================================ #
     # Needed columns for extraction
     col_name = ['datetime', 'meshcode', 'rainfall', 'numsegments', 'congestion', 'accident', 'sns', 'center']    
-    col_idx  = [1         , 2         , 5         , 6            , 9           , 15        , 13,    17   ]
+    col_idx  = [1         , 2         , 5         , 6            , 10           , 15        , 13,    17   ]
     target_col = len(col_name) - 1
 
     # ============================================ #
@@ -148,8 +148,8 @@ if __name__ == "__main__":
         start = int(sys.argv[1])
         end = int(sys.argv[2])
     else:
-        start = data_files.index('/mnt/7E3B52AF2CE273C0/Thesis/backup_main_folder/Final-Thesis-Dataset/csv_files/20140916.csv')
-        end = data_files.index('/mnt/7E3B52AF2CE273C0/Thesis/backup_main_folder/Final-Thesis-Dataset/csv_files/20141031.csv')
+        start = data_files.index('./csv_files/20140916.csv')
+        end = data_files.index('./csv_files/20141031.csv')
 
     for file_id in range(start, end):
         #if '2015' not in data_files[file_id]:
