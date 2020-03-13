@@ -22,12 +22,13 @@ def extractSequence(factorsFiles, start, steps, lookback=False, delta=1):
     iCorrupted = False
 
     if lookback == True:
-        loopRange = range(-steps, 0)
+        loopRange = range(-steps*delta, 0, delta)
     else:
-        loopRange = range(0, steps)
+        loopRange = range(0, steps*delta, delta)
 
     for i in loopRange:
-        factorFilename = WD['input']['sequence_prepdataset'] + factorsFiles[start + i*delta]
+        factorFilename = WD['input']['sequence_prepdataset'] + factorsFiles[start + i]
+        #print('--', lookback, factorFilename)
         iCorrupted, factorsMap = extractFactorMap(factorFilename)
         if iCorrupted == True:
             return None
@@ -43,7 +44,7 @@ def extractSequence(factorsFiles, start, steps, lookback=False, delta=1):
 
 def extractInOutSequence(factorsFiles, start, inSteps, outSteps, outFactor=None, crop=None):
     inputSeq = extractSequence(factorsFiles, start, inSteps, lookback=True, delta=SEQUENCE['inp_delta'])
-    outputSeq = extractSequence(factorsFiles, start, outSteps)
+    outputSeq = extractSequence(factorsFiles, start, outSteps, delta=SEQUENCE['out_delta'])
 
     iCorrupted = False
     if not(inputSeq is not None and outputSeq is not None):
@@ -62,15 +63,16 @@ def extractInOutSequence(factorsFiles, start, inSteps, outSteps, outFactor=None,
     
 if __name__ == '__main__':    
     inputFiles = os.listdir(WD['input']['sequence_prepdataset'])
-    inputFiles.sort()   
+    inputFiles.sort()  
+    #print(inputFiles)
 
     #determineCropArea(inputFiles)    
     s = int(sys.argv[1]) + SEQUENCE['inp_len']*SEQUENCE['inp_delta']
     e = int(sys.argv[2]) + s
 
     for start in range(s, e):
-        if '30.npz' not in inputFiles[start]:
-            continue
+        #if '30.npz' not in inputFiles[start]:
+        #    continue
         startingTime = inputFiles[start].split('.')[0]
         print('Extracting {0}...'.format(startingTime))
 
