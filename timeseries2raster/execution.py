@@ -1,7 +1,7 @@
 ## Importing the libraries
 import numpy as np
 import os
-import cv2
+#import cv2
 import matplotlib.pyplot as plt
 from config import *
 from PIL import Image
@@ -115,7 +115,7 @@ def generate_factor_map(path, data, col_conf, factor_config):
         dump_factor(WD['output']['extract_raster'] + starting_time, factor_map)
         del factor_map
 
-        timecode += 6
+        timecode += 1
 
 if __name__ == "__main__":
     # ============================================ #
