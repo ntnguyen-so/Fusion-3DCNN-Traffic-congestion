@@ -76,6 +76,9 @@ if __name__ == '__main__':
         startingTime = inputFiles[start].split('.')[0]
         print('Extracting {0}...'.format(startingTime))
 
+        if os.path.exists(WD['output']['sequence_prepdataset'] + 'out_seq' + startingTime + '.npz'):
+            continue
+
         # extract in/out sequence
         inSeq, outSeq, iCorrupted = extractInOutSequence(inputFiles, start, SEQUENCE['inp_len'], SEQUENCE['out_len'], SEQUENCE['out_factor'], SEQUENCE['crop'])
 
