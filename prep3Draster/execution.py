@@ -76,7 +76,8 @@ if __name__ == '__main__':
         startingTime = inputFiles[start].split('.')[0]
         print('Extracting {0}...'.format(startingTime))
 
-        if os.path.exists(WD['output']['sequence_prepdataset'] + 'out_seq' + startingTime + '.npz'):
+        if os.path.exists(WD['output']['sequence_prepdataset'] + 'out_seq/' + startingTime + '.npz') == True:
+            print(WD['output']['sequence_prepdataset'] + 'out_seq/' + startingTime + '.npz', 'done')
             continue
 
         # extract in/out sequence
