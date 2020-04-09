@@ -3,13 +3,13 @@ import os, fnmatch
 import matplotlib.pyplot as plt
 from keras import *
 import sys
-sys.path.append('../..')
+sys.path.append('../')
 from utils.logger import Logger
 
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = './dataset/medium'
+dataset_path = '/mnt/7E3B52AF2CE273C0/Thesis/dataset/dataset/s6_4h_s6_4h'
 WD = {
     'input': {
         'factors'    : dataset_path + '/in_seq/',
@@ -38,11 +38,11 @@ MAIN_FACTOR = {
 }
 
 MAX_FACTOR = {
-    'Input_congestion'        : 6405,
-    'Input_rainfall'          : 151,
+    'Input_congestion'        : 2600,
+    'Input_rainfall'          : 131,
     'Input_sns'               : 1,
     'Input_accident'          : 1,
-    'default'                 : 6405,
+    'default'                 : 2600,
 }
 
 LINK_FACTOR = {
@@ -64,13 +64,13 @@ PADDING = {
 }
 
 GLOBAL_SIZE_X = [6, 60, 80, 4]
-GLOBAL_SIZE_Y = [3, 60, 80, 1]
+GLOBAL_SIZE_Y = [6, 60, 80, 1]
 
 REDUCED_WEIGHT = 0.75
 
 # Get the list of factors data files
 print('Loading training data...')
-trainDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2014*30.npz')
+trainDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2014*.npz')
 trainDataFiles.sort()
 numTrainDataFiles = len(trainDataFiles)
 print('Nunber of training data = {0}'.format(numTrainDataFiles))
@@ -214,7 +214,7 @@ def buildPrediction(orgInputs, filters, kernelSize, lastOutputs=None):
         predictionOutput = layers.Conv3D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='relu', 
                                          name='Conv3D_prediction{0}2'.format(counter))(predictionOutput)
         
-    predictionOutput = layers.MaxPooling3D(pool_size=(2,1,1), name='output')(predictionOutput)
+    # predictionOutput = layers.MaxPooling3D(pool_size=(2,1,1), name='output')(predictionOutput)
 
     predictionOutput = Model(inputs=orgInputs, outputs=predictionOutput)
     return predictionOutput
@@ -265,10 +265,10 @@ utils.plot_model(predictionModel,to_file='architecture.png',show_shapes=True)
 ## Configuring learning process ##
 ##################################
 batchSize = 1
-numIterations = numTrainDataFiles * len(BOUNDARY_AREA) * 2
+numIterations = 30000# numTrainDataFiles * len(BOUNDARY_AREA) * 2
 
-lr = 3.5e-5
-predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=1e-5),
+lr = 5e-5
+predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=2e-5),
                         loss='mse',
                         metrics=['mse']
                        )
@@ -285,8 +285,15 @@ start = 1
 
 for iteration in range(start, numIterations):    
     # ============ Training progress ============#
-    X, y = createBatch(batchSize, trainDataFiles)
-    trainLoss = predictionModel.train_on_batch(X, y['default'])
+    while True:
+        X, y = createBatch(batchSize, trainDataFiles)
+        trainLoss = predictionModel.train_on_batch(X, y['default'])
+
+        if np.sum(X['Input_rainfall']) > 0 or np.sum(X['Input_accident']) > 0:
+            break
+        else:
+            del X
+            del y
 
     # test per epoch
     Xtest, ytest = createBatch(1, testDataFiles)      

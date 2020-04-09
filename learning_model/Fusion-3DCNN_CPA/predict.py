@@ -3,22 +3,22 @@ import os, fnmatch
 import matplotlib.pyplot as plt
 from keras import *
 import sys
-sys.path.append('../..')
+sys.path.append('../')
 from utils.metrics import *
 
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = './dataset/medium'
+dataset_path = '/mnt/7E3B52AF2CE273C0/Thesis/dataset/dataset/s6_4h_s6_4h'
 WD = {
     'input': {
-        'test' : {
-          'factors'    : dataset_path + '/in_seq/',
-          'predicted'  : dataset_path + '/out_seq/'
-        },
-    'model_weights' : './weights.h5'
+        'factors'    : dataset_path + '/in_seq/',
+        'predicted'  : dataset_path + '/out_seq/'    
     },    
-    'loss': './evaluation/medium_CPA.csv'
+    'output': {
+        'model_weights' : './training_output/model/',
+        'plots'         : './training_output/monitor/'
+    }
 }
 
 FACTOR = {
@@ -26,23 +26,23 @@ FACTOR = {
     'Input_congestion'        : 0,
     'Input_rainfall'          : 1,
     'Input_sns'               : 2,
-    'Input_accident'          : 3,
+    'Input_accident'          : 3,   
     'default'                 : 0
 }
 
-MAX_FACTOR = {
-    'Input_congestion'        : 6405,
-    'Input_rainfall'          : 151,
-    'Input_sns'               : 1,
-    'Input_accident'          : 1,
-    'default'                 : 6405,
+MAIN_FACTOR = {
+    # factor channel index
+    'Input_congestion'        : 0,
+    'Input_rainfall'          : 1,
+    'Input_accident'          : 3
 }
 
-
-BOUNDARY_AREA = {
-    0 : [ 20, 80,   50,  100],
-    1 : [ 40, 100,  100, 180],
-    2 : [ 20, 80,   180, 250]
+MAX_FACTOR = {
+    'Input_congestion'        : 2600,
+    'Input_rainfall'          : 131,
+    'Input_sns'               : 1,
+    'Input_accident'          : 1,
+    'default'                 : 2600,
 }
 
 PADDING = {

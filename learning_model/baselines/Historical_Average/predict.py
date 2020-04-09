@@ -2,20 +2,20 @@ import numpy as np
 import os, fnmatch
 import matplotlib.pyplot as plt
 import sys
-sys.path.append('../')
+sys.path.append('../..')
 from utils.metrics import *
 
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = './dataset/medium'
+dataset_path = '/mnt/7E3B52AF2CE273C0/Thesis/dataset/dataset/s6_4h_s6_4h'
 WD = {
     'input': {
         'factors'    : dataset_path + '/in_seq/',
         'predicted'  : dataset_path + '/out_seq/'    
     },    
     'output': {
-        'results'         : './medium.csv'
+        'results'         : './s6_4h_s6_4h.csv'
     }
 }
 
@@ -36,11 +36,11 @@ MAIN_FACTOR = {
 }
 
 MAX_FACTOR = {
-    'Input_congestion'        : 6405,
-    'Input_rainfall'          : 151,
+    'Input_congestion'        : 2600,
+    'Input_rainfall'          : 131,
     'Input_sns'               : 1,
     'Input_accident'          : 1,
-    'default'                 : 6405,
+    'default'                 : 2600,
 }
 
 LINK_FACTOR = {
@@ -62,10 +62,10 @@ PADDING = {
 }
 
 GLOBAL_SIZE_X = [6, 60, 80, 4]
-GLOBAL_SIZE_Y = [3, 60, 80, 1]
+GLOBAL_SIZE_Y = [6, 60, 80, 1]
 
 print('Loading testing data...')
-testDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '201*30.npz')
+testDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2015*.npz')
 testDataFiles.sort()
 numSamples = len(testDataFiles)
 print('Nunber of testing data = {0}'.format(numSamples))
@@ -166,7 +166,7 @@ for fileId in range(start, numSamples):
     for areaId in range(len(BOUNDARY_AREA)):
         Xtest, ytest = loadTestData(testDataFiles, fileId, areaId)
 
-        ypredicted = calculateHA(Xtest['Input_congestion'], 3)
+        ypredicted = calculateHA(Xtest['Input_congestion'], 6)
 
         datetime = str(testDataFiles[fileId].split('.')[0]) + '_' + str(areaId+1)
 
@@ -192,12 +192,12 @@ for fileId in range(start, numSamples):
                     error_MSE, error_MAE, error_RMSE
                 )
 
-        #print(results)
-        #logging('a', results + '\n')
-        if np.max(np.max(Xtest['Input_congestion'])) > max_congestion:
-            max_congestion = np.max(np.max(Xtest['Input_congestion']))
-            print('max_congestion', max_congestion)
+        print(results)
+        logging('a', results + '\n')
+        # if np.max(np.max(Xtest['Input_congestion'])) > max_congestion:
+        #     max_congestion = np.max(np.max(Xtest['Input_congestion']))
+        #     print('max_congestion', max_congestion)
 
-        if np.max(np.max(Xtest['Input_rainfall'])) > max_rainfall:
-            max_rainfall = np.max(np.max(Xtest['Input_rainfall']))
-            print('max_rainfall', max_rainfall)
+        # if np.max(np.max(Xtest['Input_rainfall'])) > max_rainfall:
+        #     max_rainfall = np.max(np.max(Xtest['Input_rainfall']))
+        #     print('max_rainfall', max_rainfall)

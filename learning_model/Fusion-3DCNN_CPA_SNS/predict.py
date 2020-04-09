@@ -3,22 +3,22 @@ import os, fnmatch
 import matplotlib.pyplot as plt
 from keras import *
 import sys
-sys.path.append('../..')
+sys.path.append('../')
 from utils.metrics import *
 
 #######################
 ## Configure dataset ##
 #######################
-dataset_path = './dataset/medium'
+dataset_path = '/mnt/7E3B52AF2CE273C0/Thesis/dataset/dataset/s6_4h_s6_4h'
 WD = {
     'input': {
         'test' : {
           'factors'    : dataset_path + '/in_seq/',
           'predicted'  : dataset_path + '/out_seq/'
         },
-    'model_weights' : './weights.h5'
+    'model_weights' : '/mnt/7E3B52AF2CE273C0/Thesis/dataset/source_code/Fusion-3DCNN-Traffic-congestion/learning_model/Fusion-3DCNN_CPA_SNS/training_output/model/epoch_24000.h5'
     },    
-    'loss': './evaluation/medium_075.csv'
+    'loss': './evaluation/s6_4h_s6_4h_075.csv'
 }
 
 FACTOR = {
@@ -31,11 +31,11 @@ FACTOR = {
 }
 
 MAX_FACTOR = {
-    'Input_congestion'        : 6405,
-    'Input_rainfall'          : 151,
+    'Input_congestion'        : 2600,
+    'Input_rainfall'          : 131,
     'Input_sns'               : 1,
     'Input_accident'          : 1,
-    'default'                 : 6405,
+    'default'                 : 2600,
 }
 
 LINK_FACTOR = {
@@ -57,12 +57,12 @@ PADDING = {
 }
 
 GLOBAL_SIZE_X = [6, 60, 80, 4]
-GLOBAL_SIZE_Y = [3, 60, 80, 1]
+GLOBAL_SIZE_Y = [6, 60, 80, 1]
 
 REDUCED_WEIGHT = 0.75
 
 print('Loading testing data...')
-testDataFiles = fnmatch.filter(os.listdir(WD['input']['test']['factors']), '2015*30.npz')
+testDataFiles = fnmatch.filter(os.listdir(WD['input']['test']['factors']), '2015*.npz')
 testDataFiles.sort()
 numTestDataFiles = len(testDataFiles)
 print('Nunber of testing data = {0}'.format(numTestDataFiles))
@@ -184,7 +184,7 @@ def buildPrediction(orgInputs, filters, kernelSize, lastOutputs=None):
         predictionOutput = layers.Conv3D(filters=filters[i], kernel_size=kernelSize, strides=1, padding='same', activation='relu', 
                                          name='Conv3D_prediction{0}2'.format(counter))(predictionOutput)
         
-    predictionOutput = layers.MaxPooling3D(pool_size=(2,1,1), name='output')(predictionOutput)
+    # predictionOutput = layers.MaxPooling3D(pool_size=(2,1,1), name='output')(predictionOutput)
 
     predictionOutput = Model(inputs=orgInputs, outputs=predictionOutput)
     return predictionOutput
