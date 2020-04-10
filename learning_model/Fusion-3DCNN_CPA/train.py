@@ -5,6 +5,7 @@ from keras import *
 import sys
 sys.path.append('../')
 from utils.logger import Logger
+from data_config import *
 
 #######################
 ## Configure dataset ##
@@ -20,45 +21,6 @@ WD = {
         'plots'         : './training_output/monitor/'
     }
 }
-
-FACTOR = {
-    # factor channel index
-    'Input_congestion'        : 0,
-    'Input_rainfall'          : 1,
-    'Input_sns'               : 2,
-    'Input_accident'          : 3,   
-    'default'                 : 0
-}
-
-MAIN_FACTOR = {
-    # factor channel index
-    'Input_congestion'        : 0,
-    'Input_rainfall'          : 1,
-    'Input_accident'          : 3
-}
-
-MAX_FACTOR = {
-    'Input_congestion'        : 2600,
-    'Input_rainfall'          : 131,
-    'Input_sns'               : 1,
-    'Input_accident'          : 1,
-    'default'                 : 2600,
-}
-
-BOUNDARY_AREA = {
-    0 : [ 20, 80,   50,  100],
-    1 : [ 40, 100,  100, 180],
-    2 : [ 20, 80,   180, 250]
-}
-
-PADDING = {
-    0 : [ 0,  60, 30, 80],
-    1 : [ 0,  60,  0, 80],
-    2 : [ 0,  60,  0, 70]
-}
-
-GLOBAL_SIZE_X = [6, 60, 80, 4]
-GLOBAL_SIZE_Y = [6, 60, 80, 1]
 
 # Get the list of factors data files
 print('Loading training data...')
@@ -246,9 +208,9 @@ utils.plot_model(predictionModel,to_file='architecture.png',show_shapes=True)
 ## Configuring learning process ##
 ##################################
 batchSize = 1
-numIterations = 24000#numTrainDataFiles * len(BOUNDARY_AREA) * 2
+numIterations = 24001#numTrainDataFiles * len(BOUNDARY_AREA) * 2
 
-lr = 5e-5
+lr = 4e-5
 predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=2e-5),
                         loss='mse',
                         metrics=['mse']

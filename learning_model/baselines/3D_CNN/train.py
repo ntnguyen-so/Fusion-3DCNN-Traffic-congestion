@@ -5,6 +5,7 @@ from keras import *
 import sys
 sys.path.append('../../')
 from utils.logger import Logger
+from data_config import *
 
 #######################
 ## Configure dataset ##
@@ -21,54 +22,15 @@ WD = {
     }
 }
 
-FACTOR = {
-    # factor channel index
-    'Input_congestion'        : 0,
-    'Input_rainfall'          : 1,
-    'Input_sns'               : 2,
-    'Input_accident'          : 3,   
-    'default'                 : 0
-}
-
-MAIN_FACTOR = {
-    # factor channel index
-    'Input_congestion'        : 0,
-    'Input_rainfall'          : 1,
-    'Input_accident'          : 3
-}
-
-MAX_FACTOR = {
-    'Input_congestion'        : 2600,
-    'Input_rainfall'          : 131,
-    'Input_sns'               : 1,
-    'Input_accident'          : 1,
-    'default'                 : 2600,
-}
-
-BOUNDARY_AREA = {
-    0 : [ 20, 80,   50,  100],
-    1 : [ 40, 100,  100, 180],
-    2 : [ 20, 80,   180, 250]
-}
-
-PADDING = {
-    0 : [ 0,  60, 30, 80],
-    1 : [ 0,  60,  0, 80],
-    2 : [ 0,  60,  0, 70]
-}
-
-GLOBAL_SIZE_X = [6, 60, 80, 4]
-GLOBAL_SIZE_Y = [3, 60, 80, 1]
-
 # Get the list of factors data files
 print('Loading training data...')
-trainDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2014*30.npz')
+trainDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2014*.npz')
 trainDataFiles.sort()
 numTrainDataFiles = len(trainDataFiles)
 print('Nunber of training data = {0}'.format(numTrainDataFiles))
 
 print('Loading testing data...')
-testDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2015*30.npz')
+testDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2015*.npz')
 testDataFiles.sort()
 numTestDataFiles = len(testDataFiles)
 print('Nunber of testing data = {0}'.format(numTestDataFiles))

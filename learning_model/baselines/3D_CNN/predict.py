@@ -5,6 +5,7 @@ from keras import *
 import sys
 sys.path.append('../../')
 from utils.metrics import *
+from data_config import *
 
 #######################
 ## Configure dataset ##
@@ -12,56 +13,17 @@ from utils.metrics import *
 dataset_path = '/mnt/7E3B52AF2CE273C0/Thesis/dataset/dataset/s6_4h_s6_4h'
 WD = {
     'input': {
-        'factors'    : dataset_path + '/in_seq/',
-        'predicted'  : dataset_path + '/out_seq/'    
+        'test' : {
+          'factors'    : dataset_path + '/in_seq/',
+          'predicted'  : dataset_path + '/out_seq/'
+        },
+    'model_weights' : '/mnt/7E3B52AF2CE273C0/Thesis/dataset/source_code/Fusion-3DCNN-Traffic-congestion/learning_model/Fusion-3DCNN_CPA/training_output/model/epoch_21000.h5'
     },    
-    'output': {
-        'model_weights' : './training_output/model/',
-        'plots'         : './training_output/monitor/'
-    }
+    'loss': './evaluation/s6_4h_s6_4h.csv'
 }
-
-FACTOR = {
-    # factor channel index
-    'Input_congestion'        : 0,
-    'Input_rainfall'          : 1,
-    'Input_sns'               : 2,
-    'Input_accident'          : 3,   
-    'default'                 : 0
-}
-
-MAIN_FACTOR = {
-    # factor channel index
-    'Input_congestion'        : 0,
-    'Input_rainfall'          : 1,
-    'Input_accident'          : 3
-}
-
-MAX_FACTOR = {
-    'Input_congestion'        : 2600,
-    'Input_rainfall'          : 131,
-    'Input_sns'               : 1,
-    'Input_accident'          : 1,
-    'default'                 : 2600,
-}
-
-BOUNDARY_AREA = {
-    0 : [ 20, 80,   50,  100],
-    1 : [ 40, 100,  100, 180],
-    2 : [ 20, 80,   180, 250]
-}
-#imgShape = (6,60,80,1)
-PADDING = {
-    0 : [ 0,  60, 30, 80],
-    1 : [ 0,  60,  0, 80],
-    2 : [ 0,  60,  0, 70]
-}
-
-GLOBAL_SIZE_X = [6, 60, 80, 4]
-GLOBAL_SIZE_Y = [3, 60, 80, 1]
 
 print('Loading testing data...')
-testDataFiles = fnmatch.filter(os.listdir(WD['input']['test']['factors']), '2015*30.npz')
+testDataFiles = fnmatch.filter(os.listdir(WD['input']['test']['factors']), '2015*.npz')
 testDataFiles.sort()
 numSamples = len(testDataFiles)
 print('Nunber of testing data = {0}'.format(numSamples))
