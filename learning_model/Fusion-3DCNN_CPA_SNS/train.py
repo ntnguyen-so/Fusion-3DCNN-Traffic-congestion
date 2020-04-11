@@ -114,7 +114,9 @@ def createBatch(batchSize, dataFiles):
                 continue
 
             # Load factors and predicted data
-            for key in MAIN_FACTOR.keys():
+            for key in FACTOR.keys():
+                if key == 'Input_sns':
+                    continue
                 X = appendFactorData(key, factorData, X)
             
             y = appendFactorData('default', predictedData, y)
@@ -221,9 +223,9 @@ utils.plot_model(predictionModel,to_file='architecture.png',show_shapes=True)
 ## Configuring learning process ##
 ##################################
 batchSize = 1
-numIterations = 30000# numTrainDataFiles * len(BOUNDARY_AREA) * 2
+numIterations = 15001# numTrainDataFiles * len(BOUNDARY_AREA) * 2
 
-lr = 5e-5
+lr = 4e-5
 predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=2e-5),
                         loss='mse',
                         metrics=['mse']

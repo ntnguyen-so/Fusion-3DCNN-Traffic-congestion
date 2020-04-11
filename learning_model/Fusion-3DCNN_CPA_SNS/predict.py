@@ -97,6 +97,8 @@ def loadTestData(dataFiles, fileId, areaId):
 
     # Load factors and predicted data
     for key in FACTOR.keys():
+        if key == 'Input_sns':
+            continue
         X = appendFactorData(key, factorData, X)
     
     y = appendFactorData('default', predictedData, y)
