@@ -22,7 +22,7 @@ WD = {
     }
 }
 
-REDUCED_WEIGHT = 0.75
+REDUCED_WEIGHT = 0.25
 
 # Get the list of factors data files
 print('Loading training data...')
@@ -66,7 +66,7 @@ def fuseFactors(factorName, factorData):
     if factorName == 'Input_accident':
         main_factor[main_factor > 0] = 1
 
-    if factorName != 'default':
+    if factorName != 'default' and factorName != 'Input_sns':
         secondary_factor = factorData[:, :, :, FACTOR['Input_sns']]
         secondary_factor = np.expand_dims(secondary_factor, axis=3)
         secondary_factor = np.expand_dims(secondary_factor, axis=0)        
@@ -115,8 +115,6 @@ def createBatch(batchSize, dataFiles):
 
             # Load factors and predicted data
             for key in FACTOR.keys():
-                if key == 'Input_sns':
-                    continue
                 X = appendFactorData(key, factorData, X)
             
             y = appendFactorData('default', predictedData, y)
@@ -223,10 +221,10 @@ utils.plot_model(predictionModel,to_file='architecture.png',show_shapes=True)
 ## Configuring learning process ##
 ##################################
 batchSize = 1
-numIterations = 15001# numTrainDataFiles * len(BOUNDARY_AREA) * 2
+numIterations = 24001# numTrainDataFiles * len(BOUNDARY_AREA) * 2
 
-lr = 4e-5
-predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=2e-5),
+lr = 3e-5
+predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=1e-5),
                         loss='mse',
                         metrics=['mse']
                        )

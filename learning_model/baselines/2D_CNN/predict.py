@@ -17,13 +17,13 @@ WD = {
           'factors'    : dataset_path + '/in_seq/',
           'predicted'  : dataset_path + '/out_seq/'
         },
-    'model_weights' : '/mnt/7E3B52AF2CE273C0/Thesis/dataset/source_code/Fusion-3DCNN-Traffic-congestion/learning_model/Fusion-3DCNN_CPA/training_output/model/epoch_21000.h5'
+    'model_weights' : '/mnt/7E3B52AF2CE273C0/Thesis/dataset/source_code/Fusion-3DCNN-Traffic-congestion/learning_model/baselines/2D_CNN/training_output/model/iteration_15000.h5'
     },    
     'loss': './evaluation/s6_4h_s6_4h.csv'
 }
 
 print('Loading testing data...')
-testDataFiles = fnmatch.filter(os.listdir(WD['input']['test']['factors']), '2015*.npz')
+testDataFiles = fnmatch.filter(os.listdir(WD['input']['test']['factors']), '2015*30.npz')
 testDataFiles.sort()
 numSamples = len(testDataFiles)
 print('Nunber of testing data = {0}'.format(numSamples))
@@ -164,7 +164,7 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
 ## Define model architecture ##
 ###############################
 imgShape = (60,80,6)
-targetImgShape=(60,80,3)
+targetImgShape=(60,80,6)
 filtersDict = {}; filtersDict['factors'] = [128, 128, 256, 256, 256, 256, 128]; filtersDict['prediction'] = [64, targetImgShape[2]]
 kernelSizeDict = {}; kernelSizeDict['factors'] = (3,3); kernelSizeDict['prediction'] = (3,3)
 

@@ -5,6 +5,7 @@ from keras import *
 import sys
 sys.path.append('../../')
 from utils.logger import Logger
+from data_config import *
 
 #######################
 ## Configure dataset ##
@@ -21,48 +22,9 @@ WD = {
     }
 }
 
-FACTOR = {
-    # factor channel index
-    'Input_congestion'        : 0,
-    'Input_rainfall'          : 1,
-    'Input_sns'               : 2,
-    'Input_accident'          : 3,   
-    'default'                 : 0
-}
-
-MAIN_FACTOR = {
-    # factor channel index
-    'Input_congestion'        : 0,
-    'Input_rainfall'          : 1,
-    'Input_accident'          : 3
-}
-
-MAX_FACTOR = {
-    'Input_congestion'        : 2600,
-    'Input_rainfall'          : 131,
-    'Input_sns'               : 1,
-    'Input_accident'          : 1,
-    'default'                 : 2600,
-}
-
-BOUNDARY_AREA = {
-    0 : [ 20, 80,   50,  100],
-    1 : [ 40, 100,  100, 180],
-    2 : [ 20, 80,   180, 250]
-}
-
-PADDING = {
-    0 : [ 0,  60, 30, 80],
-    1 : [ 0,  60,  0, 80],
-    2 : [ 0,  60,  0, 70]
-}
-
-GLOBAL_SIZE_X = [6, 60, 80, 4]
-GLOBAL_SIZE_Y = [3, 60, 80, 1]
-
 # Get the list of factors' data files
 print('Loading training data...')
-trainDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2014*30.npz')
+trainDataFiles = fnmatch.filter(os.listdir(WD['input']['factors']), '2014*.npz')
 trainDataFiles.sort()
 numTrainDataFiles = len(trainDataFiles)
 print('Number of training data = {0}'.format(numTrainDataFiles))
@@ -226,7 +188,7 @@ def buildCompleteModel(imgShape, filtersDict, kernelSizeDict):
 ## Define model architecture ##
 ###############################
 imgShape = (60,80,6)
-targetImgShape=(60,80,3)
+targetImgShape=(60,80,6)
 filtersDict = {}; filtersDict['factors'] = [128, 128, 256, 256, 256, 256, 128]; filtersDict['prediction'] = [64, targetImgShape[2]]
 kernelSizeDict = {}; kernelSizeDict['factors'] = (3,3); kernelSizeDict['prediction'] = (3,3)
 
@@ -238,9 +200,9 @@ utils.plot_model(predictionModel,to_file='architecture.png',show_shapes=True)
 ## Configuring learning process ##
 ##################################
 batchSize = 1
-numIterations = numTrainDataFiles * len(BOUNDARY_AREA) * 2
+numIterations = 15001# numTrainDataFiles * len(BOUNDARY_AREA) * 2
 
-lr = 5e-5
+lr = 4e-5
 predictionModel.compile(optimizer=optimizers.Adam(lr=lr, decay=1e-5),
                         loss='mse',
                         metrics=['mse']
@@ -263,9 +225,7 @@ for iteration in range(start, numIterations):
 
     # test per epoch
     Xtest, ytest = createBatch(1, testDataFiles)      
-    ypredicted = predictionModel.predict(Xtest)
-    
-    testLoss = mean_squared_error_eval(ytest['default'], ypredicted)
+    testLoss = predictionModel.test_on_batch(Xtest, ytest['default'])
 
     # ============ TensorBoard logging ============#
     # Log the scalar values
@@ -273,7 +233,7 @@ for iteration in range(start, numIterations):
         'loss': trainLoss[0],
     }
     test_info = {
-        'loss': testLoss,
+        'loss': testLoss[0],
     }
 
     for tag, value in train_info.items():
@@ -282,11 +242,16 @@ for iteration in range(start, numIterations):
         test_logger.scalar_summary(tag, value, step=iteration)
     
     trainLosses.append(trainLoss[0])
-    testLosses.append(testLoss)    
-    print(iteration, trainLoss[0], testLoss, np.sum(ytest['default']), np.sum(ypredicted))
+    testLosses.append(testLoss[0])    
+    print('Iteration: {:7d}; \tTrain_Loss: {:2.10f}; \tTest_Loss: {:2.10f}'.format(iteration, trainLoss[0], testLoss[0]))
+
+    if iteration % 200 == 0:
+        ypredicted = predictionModel.predict(Xtest)
+        print('Iteration: {:7d}; \tTrain_Loss: {:2.10f}; \tTest_Loss: {:2.10f}; \tSum_GT: {:2.10f}; \tSum_PD: {:2.10f}'.format(
+            iteration, trainLoss[0], testLoss[0], np.sum(ytest['default']), np.sum(ypredicted)))
     
     # save model checkpoint
-    if iteration % 100 == 0:   
+    if iteration % 3000 == 0:   
         # save model weight
         predictionModel.save_weights(WD['output']['model_weights'] \
                                      + 'iteration_' + str(iteration) + '.h5')

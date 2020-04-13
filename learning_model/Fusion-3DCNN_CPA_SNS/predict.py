@@ -17,7 +17,7 @@ WD = {
           'factors'    : dataset_path + '/in_seq/',
           'predicted'  : dataset_path + '/out_seq/'
         },
-    'model_weights' : '/mnt/7E3B52AF2CE273C0/Thesis/dataset/source_code/Fusion-3DCNN-Traffic-congestion/learning_model/Fusion-3DCNN_CPA_SNS/training_output/model/epoch_24000.h5'
+    'model_weights' : '/mnt/7E3B52AF2CE273C0/Thesis/dataset/source_code/Fusion-3DCNN-Traffic-congestion/learning_model/Fusion-3DCNN_CPA_SNS/training_output/model/epoch_15000.h5'
     },    
     'loss': './evaluation/s6_4h_s6_4h_075.csv'
 }
@@ -26,7 +26,7 @@ WD = {
 REDUCED_WEIGHT = 0.75
 
 print('Loading testing data...')
-testDataFiles = fnmatch.filter(os.listdir(WD['input']['test']['factors']), '2015*.npz')
+testDataFiles = fnmatch.filter(os.listdir(WD['input']['test']['factors']), '2015*30.npz')
 testDataFiles.sort()
 numTestDataFiles = len(testDataFiles)
 print('Nunber of testing data = {0}'.format(numTestDataFiles))
@@ -97,8 +97,6 @@ def loadTestData(dataFiles, fileId, areaId):
 
     # Load factors and predicted data
     for key in FACTOR.keys():
-        if key == 'Input_sns':
-            continue
         X = appendFactorData(key, factorData, X)
     
     y = appendFactorData('default', predictedData, y)
