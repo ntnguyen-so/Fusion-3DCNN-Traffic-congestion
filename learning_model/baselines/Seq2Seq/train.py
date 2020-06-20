@@ -17,18 +17,18 @@ from matplotlib import pyplot
 from numpy import array
 import numpy as np
 
-dataset_filename = './dataset.csv'
+dataset_filename = './timeseries_avg_reduced.csv'
 
 n_lag = 6
-n_seq = 3
-n_jump=1
+n_seq = 6
+n_jump=8
 n_test = 8000
-path_model = './model/short.h5'
+path_model = './model/long.h5'
 np.random.seed(seed=1)
 
 n_batch=8
 n_epochs = 300
-n_neurons = 500
+n_neurons = 400
 
 # date-time parsing function for loading the dataset
 def parser(x):
@@ -128,7 +128,7 @@ def fit_lstm(train, n_lag, n_seq, n_vars, n_batch, nb_epoch, n_neurons, path_mod
 	
 	es = EarlyStopping(monitor='val_loss', mode='min', verbose=0, patience=500)
 	mc = ModelCheckpoint(path_model, monitor='val_loss', mode='min', verbose=1, save_best_only=True)
-	model.fit(train, y, epochs=nb_epoch, batch_size=n_batch, validation_split=.05, verbose=2,shuffle=True, callbacks=[es, mc])
+	model.fit(train, y, epochs=nb_epoch, batch_size=n_batch, validation_split=.05, verbose=1,shuffle=True, callbacks=[es, mc])
 	return model
 
 # load dataset

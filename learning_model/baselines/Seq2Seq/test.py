@@ -16,12 +16,12 @@ from matplotlib import pyplot
 from numpy import array
 import numpy as np
 
-dataset_filename = './dataset.csv'
-model_filename = './model/short.h5'
-result_filename = './results_short.csv'
-n_jump=1
+dataset_filename = './timeseries_avg_reduced.csv'
+model_filename = './model/long.h5'
+result_filename = './evaluation/s6_4h_s6_4h.csv'
+n_jump=8
 n_lag = 6
-n_seq = 3
+n_seq = 6
 n_test=8000
 n_batch=1
 
@@ -144,14 +144,14 @@ def evaluate_forecasts(test, forecasts, n_lag, n_seq, result_file, timestart, n_
 		rmse = sqrt(mean_squared_error(actual, predicted))
 		mae = mean_absolute_error(actual, predicted)
 		
-		result_line = '{0},{1},{2},{3},{4},{5}'.format(timestart + i, mse, rmse, mae, np.sum(actual), np.sum(predicted))
+		result_line = '{0},{1},{2},{3},{4},{5}'.format(timestart + i, np.sum(actual), np.sum(predicted), mse, mae, rmse)
 		result_file.write(result_line + '\n')
 		print(result_line)
 
 # reset the results
-f = open (result_filename, 'w')
-f.write('id,err_MSE,err_RMSE,err_MAE,GT,PD\n')
-f.close()
+# f = open (result_filename, 'w')
+# f.write('id,err_MSE,err_RMSE,err_MAE,GT,PD\n')
+# f.close()
 
 # load dataset
 series = DataFrame()
