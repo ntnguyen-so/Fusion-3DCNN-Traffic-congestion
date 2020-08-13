@@ -1,4 +1,7 @@
-# The github repository storing source code of Fusion-3DCNN to predict traffic congestion by using multiple urban spatio-temporal sensing data sources.
+# The github repository storing source code of the Fusion-3DCNN deep learning model.
+
+### The solution is accepted to be published at The 31st International Conference on Database and Expert Systems Applications - DEXA2020
+Camera-ready version of the paper can be retrieved at: https://github.com/thanhnn-uit-13/Fusion-3DCNN-Traffic-congestion/blob/master/Final_paper.pdf.
 
 ### Complete workflow ###
 ![Complete workflow](_imgs/workflow.png?raw=true)
